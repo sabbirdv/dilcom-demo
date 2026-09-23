@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DLICOM | Tactical Interface</title>
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@300;500;700&display=swap" rel="stylesheet">
+    
+    <!-- Babylon.js & Physics Dependencies -->
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/cannon.js"></script>
+
+    <style>
+        :root {
+            --neon-blue: #00f2ff;
+            --glass-bg: rgba(0, 15, 25, 0.8);
+            --border-glow: 0 0 15px rgba(0, 242, 255, 0.4);
+        }
+
+        * {
+            margin: 0; padding: 0; box-sizing: border-box;
+            font-family: 'Rajdhani', sans-serif;
+        }
+
+        body, html {
+            height: 100%; width: 100%;
+            overflow: hidden; background-color: #000;
+            color: var(--neon-blue);
+        }
+
+        /* --- 3D Game Canvas --- */
+        #renderCanvas {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            display: none; /* Hidden until level 1 starts */
+            touch-action: none;
+            z-index: 1;
+        }
+
+        /* --- Menu Background --- */
+        #menu-assets {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 0;
+        }
+
+        .video-bg {
+            position: absolute;
+            top: 50%; left: 50%;
+            min-width: 100%; min-height: 100%;
+            transform: translate(-50%, -50%);
+            filter: brightness(0.4) contrast(1.2);
+            object-fit: cover;
+        }
+
+        .overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle, transparent 20%, rgba(0,0,0,0.9) 100%);
+        }
+
+        /* --- HUD (Top Bar) --- */
+        .top-nav {
+            position: fixed;
+            top: 0; width: 100%;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+            pointer-events: none;
+        }
+
+        .status-panel, .currency-display {
+            background: var(--glass-bg);
+            backdrop-filter: blur(10px);
+            padding: 8px 15px;
+            border: 1px solid var(--neon-blue);
+            box-shadow: var(--border-glow);
+            pointer-events: auto;
+        }
+
+        .status-panel { clip-path: polygon(0 0, 100% 0, 85% 100%, 0% 100%); }
+        .currency-display { clip-path: polygon(15% 0, 100% 0, 100% 100%, 0% 100%); text-align: right; }
+        .label { font-size: 0.6rem; letter-spacing: 2px; text-transform: uppercase; opacity: 0.8; }
+        .value { font-family: 'Orbitron', sans-serif; font-size: clamp(1rem, 4vw, 1.4rem); }
+
+        /* --- UI Screens --- */
+        .ui-container {
+            position: relative;
+            z-index: 10;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .screen {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            background: var(--glass-bg);
+            width: 100%;
+            max-width: 500px;
+            padding: clamp(20px, 8vw, 50px);
+            border: 1px solid rgba(0, 242, 255, 0.3);
+            backdrop-filter: blur(20px);
+            animation: screenIn 0.4s ease-out;
+        }
+
+        .active { display: flex; }
+
+        @keyframes screenIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: clamp(2.5rem, 10vw, 4.5rem);
+            letter-spacing: 10px;
+            margin-bottom: 30px;
+            text-align: center;
+            background: linear-gradient(to bottom, #fff, var(--neon-blue));
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .btn {
+            width: 100%;
+            max-width: 300px;
+            padding: 15px;
+            margin: 8px 0;
+            background: rgba(0, 242, 255, 0.1);
+            border: 1px solid var(--neon-blue);
+            color: var(--neon-blue);
+            text-transform: uppercase;
+            font-weight: bold;
+            letter-spacing: 3px;
+            cursor: pointer;
+            transition: 0.3s;
+            clip-path: polygon(10% 0, 100% 0, 100% 70%, 90% 100%, 0 100%, 0 30%);
+        }
+
+        .btn:hover {
+            background: var(--neon-blue);
+            color: #000;
+            box-shadow: 0 0 20px var(--neon-blue);
+        }
+
+        .level-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin: 20px 0;
+            width: 100%;
+        }
+
+        .level-node {
+            aspect-ratio: 1/1;
+            border: 1px solid var(--neon-blue);
+            display: flex; align-items: center; justify-content: center;
+            font-family: 'Orbitron', sans-serif;
+            background: rgba(0,0,0,0.4);
+            cursor: pointer;
+        }
+
+        .level-node.locked { opacity: 0.2; border-color: #444; pointer-events: none; }
+
+        .logs {
+            position: fixed;
+            bottom: 20px; left: 20px;
+            font-size: 0.7rem; opacity: 0.5;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 3D Game Canvas -->
+    <canvas id="renderCanvas" tabindex="1" ></canvas>
+
+    <!-- UI Background Layer -->
+    <div id="menu-assets">
+        <video class="video-bg" autoplay muted loop playsinline>
+            <source src="https://assets.mixkit.co/videos/preview/mixkit-digital-animation-of-blue-and-purple-neon-lines-32214-large.mp4" type="video/mp4">
+        </video>
+        <div class="overlay"></div>
+    </div>
+
+    <!-- HUD -->
+    <div class="top-nav">
+        <div class="status-panel">
+            <div class="label">Status</div>
+            <div class="value" id="status-text">NEURAL_IDLE</div>
+        </div>
+        <div class="currency-display">
+            <div class="label">Credits</div>
+            <div class="value" id="coins">0000</div>
+        </div>
+    </div>
+
+    <!-- Screens -->
+    <div class="ui-container" id="ui-interface">
+        <!-- Main Menu -->
+        <div id="screen-main" class="screen active">
+            <div class="label">Neural Link Established</div>
+            <h1>DLICOM</h1>
+            <button class="btn" onclick="showScreen('screen-levels')">Start Game</button>
+            <button class="btn" onclick="addCredits()">Collect Credits</button>
+            <button class="btn" onclick="resetGame()" style="border-color: #ff3e3e; color: #ff3e3e;">Wipe Cache</button>
+        </div>
+
+        <!-- Level Selector -->
+        <div id="screen-levels" class="screen">
+            <div class="label" style="margin-bottom: 10px;">Select Node</div>
+            <div class="level-grid" id="grid"></div>
+            <button class="btn" onclick="showScreen('screen-main')">Back to Menu</button>
+        </div>
+    </div>
+
+    <div class="logs" id="log-box">> Initializing DLICOM OS...</div>
+
+    <script>
+        /** --- SYSTEM DATA --- **/
+        const SAVE_ID = 'DLICOM_USER_DATA';
+        let userData = { credits: 0, level: 1 };
+        let gameInstance = null;
+
+        function init() {
+            const data = localStorage.getItem(SAVE_ID);
+            if (data) userData = JSON.parse(data);
+            updateUI();
+            
+            setInterval(() => {
+                const logs = ["TRACING...","DATA_SYNCED","KEY_ENCRYPTED","NODE_SCAN"];
+                document.getElementById('log-box').innerHTML = `> ${logs[Math.floor(Math.random()*logs.length)]}<br>> OFFSET: ${Math.random().toFixed(4)}`;
+            }, 3000);
+        }
+
+        function showScreen(id) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            if (id === 'screen-levels') renderGrid();
+        }
+
+        function updateUI() {
+            document.getElementById('coins').innerText = userData.credits.toString().padStart(4, '0');
+        }
+
+        function renderGrid() {
+            const grid = document.getElementById('grid');
+            grid.innerHTML = '';
+            for (let i = 1; i <= 12; i++) {
+                const node = document.createElement('div');
+                node.className = `level-node ${i > userData.level ? 'locked' : ''}`;
+                node.innerText = i;
+                if (i <= userData.level) node.onclick = () => launchLevel(i);
+                grid.appendChild(node);
+            }
+        }
+
+        /** --- GAME TRANSITION --- **/
+        function launchLevel(n) {
+            if(n !== 1) {
+                alert("Only Sector 1 is accessible in this build.");
+                return;
+            }
+
+            // 1. Hide UI and Video
+            document.getElementById('ui-interface').style.display = 'none';
+            document.getElementById('menu-assets').style.display = 'none';
+            document.getElementById('status-text').innerText = "LINK_ACTIVE";
+            
+            // 2. Show Canvas
+            const canvas = document.getElementById('renderCanvas');
+            canvas.style.display = 'block';
+
+            canvas.focus();
+
+            // 3. Initialize Engine
+            if (!gameInstance) {
+                gameInstance = new DLICOMGame("renderCanvas");
+            }
+        }
+
+        function addCredits() {
+            userData.credits += 50;
+            save(); updateUI();
+        }
+
+        function save() { localStorage.setItem(SAVE_ID, JSON.stringify(userData)); }
+
+        function resetGame() {
+            if (confirm("Wipe all progress?")) {
+                localStorage.removeItem(SAVE_ID);
+                location.reload();
+            }
+        }
+
+  
+        init();
+    </script>
+    <script src="level.js"></script>
+</body>
+</html>
