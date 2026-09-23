@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DLICOM | Tactical Interface</title>
     
     <!-- Fonts -->
@@ -22,15 +22,12 @@
         * {
             margin: 0; padding: 0; box-sizing: border-box;
             font-family: 'Rajdhani', sans-serif;
-            -webkit-user-select: none;
-            user-select: none;
         }
 
         body, html {
             height: 100%; width: 100%;
             overflow: hidden; background-color: #000;
             color: var(--neon-blue);
-            position: fixed;
         }
 
         /* --- 3D Game Canvas --- */
@@ -38,74 +35,34 @@
             position: absolute;
             top: 0; left: 0;
             width: 100%; height: 100%;
-            display: none;
+            display: none; /* Hidden until level 1 starts */
             touch-action: none;
             z-index: 1;
         }
 
-        /* --- ENHANCED MOBILE CONTROLS --- */
-        #mobile-overlay {
+        /* --- Menu Background --- */
+        #menu-assets {
             position: fixed;
-            bottom: 40px; /* Lifted slightly from bottom */
-            left: 0;
-            width: 100%;
-            padding: 0 40px;
-            display: none; 
-            justify-content: space-between;
-            align-items: flex-end;
-            z-index: 200;
-            pointer-events: none;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 0;
         }
 
-        .joystick-container {
-            width: 180px; /* Increased from 120px */
-            height: 180px; /* Increased from 120px */
-            background: rgba(255, 255, 255, 0.05);
-            border: 3px solid var(--neon-blue);
-            border-radius: 50%;
-            position: relative;
-            pointer-events: auto;
-            touch-action: none;
-        }
-
-        #joystick-knob {
-            width: 75px; /* Increased from 50px */
-            height: 75px; /* Increased from 50px */
-            background: var(--neon-blue);
-            border-radius: 50%;
+        .video-bg {
             position: absolute;
-            top: 50%;
-            left: 50%;
+            top: 50%; left: 50%;
+            min-width: 100%; min-height: 100%;
             transform: translate(-50%, -50%);
-            box-shadow: var(--border-glow);
-            opacity: 0.7;
+            filter: brightness(0.4) contrast(1.2);
+            object-fit: cover;
         }
 
-        #mobile-jump {
-            width: 110px; /* Increased from 80px */
-            height: 110px; /* Increased from 80px */
-            background: rgba(0, 242, 255, 0.1);
-            border: 3px solid var(--neon-blue);
-            border-radius: 50%;
-            color: var(--neon-blue);
-            font-family: 'Orbitron', sans-serif;
-            font-size: 1.2rem;
-            font-weight: bold;
-            pointer-events: auto;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: var(--border-glow);
-            touch-action: none;
+        .overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle, transparent 20%, rgba(0,0,0,0.9) 100%);
         }
 
-        #mobile-jump:active {
-            background: var(--neon-blue);
-            color: #000;
-            transform: scale(0.95);
-        }
-
-        /* --- HUD --- */
+        /* --- HUD (Top Bar) --- */
         .top-nav {
             position: fixed;
             top: 0; width: 100%;
@@ -129,30 +86,9 @@
         .status-panel { clip-path: polygon(0 0, 100% 0, 85% 100%, 0% 100%); }
         .currency-display { clip-path: polygon(15% 0, 100% 0, 100% 100%, 0% 100%); text-align: right; }
         .label { font-size: 0.6rem; letter-spacing: 2px; text-transform: uppercase; opacity: 0.8; }
-        .value { font-family: 'Orbitron', sans-serif; font-size: clamp(0.9rem, 4vw, 1.4rem); }
+        .value { font-family: 'Orbitron', sans-serif; font-size: clamp(1rem, 4vw, 1.4rem); }
 
-        /* --- Menu Assets --- */
-        #menu-assets {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            z-index: 0;
-        }
-
-        .video-bg {
-            position: absolute;
-            top: 50%; left: 50%;
-            min-width: 100%; min-height: 100%;
-            transform: translate(-50%, -50%);
-            filter: brightness(0.4) contrast(1.2);
-            object-fit: cover;
-        }
-
-        .overlay {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: radial-gradient(circle, transparent 20%, rgba(0,0,0,0.9) 100%);
-        }
-
+        /* --- UI Screens --- */
         .ui-container {
             position: relative;
             z-index: 10;
@@ -185,8 +121,8 @@
 
         h1 {
             font-family: 'Orbitron', sans-serif;
-            font-size: clamp(2.2rem, 10vw, 4.5rem);
-            letter-spacing: 5px;
+            font-size: clamp(2.5rem, 10vw, 4.5rem);
+            letter-spacing: 10px;
             margin-bottom: 30px;
             text-align: center;
             background: linear-gradient(to bottom, #fff, var(--neon-blue));
@@ -209,6 +145,12 @@
             cursor: pointer;
             transition: 0.3s;
             clip-path: polygon(10% 0, 100% 0, 100% 70%, 90% 100%, 0 100%, 0 30%);
+        }
+
+        .btn:hover {
+            background: var(--neon-blue);
+            color: #000;
+            box-shadow: 0 0 20px var(--neon-blue);
         }
 
         .level-grid {
@@ -240,16 +182,10 @@
 </head>
 <body>
 
-    <canvas id="renderCanvas" tabindex="1"></canvas>
+    <!-- 3D Game Canvas -->
+    <canvas id="renderCanvas" tabindex="1" ></canvas>
 
-    <!-- UI Overlay for Mobile -->
-    <div id="mobile-overlay">
-        <div class="joystick-container" id="joystick-zone">
-            <div id="joystick-knob"></div>
-        </div>
-        <div id="mobile-jump">JUMP</div>
-    </div>
-
+    <!-- UI Background Layer -->
     <div id="menu-assets">
         <video class="video-bg" autoplay muted loop playsinline>
             <source src="https://assets.mixkit.co/videos/preview/mixkit-digital-animation-of-blue-and-purple-neon-lines-32214-large.mp4" type="video/mp4">
@@ -257,6 +193,7 @@
         <div class="overlay"></div>
     </div>
 
+    <!-- HUD -->
     <div class="top-nav">
         <div class="status-panel">
             <div class="label">Status</div>
@@ -268,7 +205,9 @@
         </div>
     </div>
 
+    <!-- Screens -->
     <div class="ui-container" id="ui-interface">
+        <!-- Main Menu -->
         <div id="screen-main" class="screen active">
             <div class="label">Neural Link Established</div>
             <h1>DLICOM</h1>
@@ -277,6 +216,7 @@
             <button class="btn" onclick="resetGame()" style="border-color: #ff3e3e; color: #ff3e3e;">Wipe Cache</button>
         </div>
 
+        <!-- Level Selector -->
         <div id="screen-levels" class="screen">
             <div class="label" style="margin-bottom: 10px;">Select Node</div>
             <div class="level-grid" id="grid"></div>
@@ -287,6 +227,7 @@
     <div class="logs" id="log-box">> Initializing DLICOM OS...</div>
 
     <script>
+        /** --- SYSTEM DATA --- **/
         const SAVE_ID = 'DLICOM_USER_DATA';
         let userData = { credits: 0, level: 1 };
         let gameInstance = null;
@@ -324,80 +265,28 @@
             }
         }
 
+        /** --- GAME TRANSITION --- **/
         function launchLevel(n) {
             if(n !== 1) {
                 alert("Only Sector 1 is accessible in this build.");
                 return;
             }
 
+            // 1. Hide UI and Video
             document.getElementById('ui-interface').style.display = 'none';
             document.getElementById('menu-assets').style.display = 'none';
             document.getElementById('status-text').innerText = "LINK_ACTIVE";
             
+            // 2. Show Canvas
             const canvas = document.getElementById('renderCanvas');
             canvas.style.display = 'block';
-            
-            if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
-                document.getElementById('mobile-overlay').style.display = 'flex';
-                initMobileControls();
-            }
 
             canvas.focus();
 
+            // 3. Initialize Engine
             if (!gameInstance) {
                 gameInstance = new DLICOMGame("renderCanvas");
             }
-        }
-
-        function initMobileControls() {
-            const knob = document.getElementById('joystick-knob');
-            const zone = document.getElementById('joystick-zone');
-            const jumpBtn = document.getElementById('mobile-jump');
-            const rect = zone.getBoundingClientRect();
-            const centerX = rect.width / 2;
-            const centerY = rect.height / 2;
-            const maxDistance = 70; // Increased to match larger container
-
-            const handleTouch = (e) => {
-                const touch = e.touches[0];
-                let x = touch.clientX - rect.left - centerX;
-                let y = touch.clientY - rect.top - centerY;
-                
-                const distance = Math.min(Math.sqrt(x*x + y*y), maxDistance);
-                const angle = Math.atan2(y, x);
-                
-                const finalX = Math.cos(angle) * distance;
-                const finalY = Math.sin(angle) * distance;
-
-                knob.style.transform = `translate(calc(-50% + ${finalX}px), calc(-50% + ${finalY}px))`;
-                
-                if (gameInstance) {
-                    gameInstance.mobileInput.x = finalX / maxDistance;
-                    gameInstance.mobileInput.z = -(finalY / maxDistance);
-                }
-            };
-
-            zone.addEventListener('touchmove', (e) => {
-                e.preventDefault();
-                handleTouch(e);
-            }, {passive: false});
-
-            zone.addEventListener('touchend', () => {
-                knob.style.transform = `translate(-50%, -50%)`;
-                if (gameInstance) {
-                    gameInstance.mobileInput.x = 0;
-                    gameInstance.mobileInput.z = 0;
-                }
-            });
-
-            jumpBtn.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                if (gameInstance) gameInstance.inputMap["space"] = true;
-            }, {passive: false});
-            
-            jumpBtn.addEventListener('touchend', () => {
-                if (gameInstance) gameInstance.inputMap["space"] = false;
-            });
         }
 
         function addCredits() {
@@ -414,6 +303,7 @@
             }
         }
 
+  
         init();
     </script>
     <script src="level.js"></script>

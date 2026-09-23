@@ -4,7 +4,6 @@ class DLICOMGame {
         this.canvas = document.getElementById(canvasId);
         this.engine = new BABYLON.Engine(this.canvas, true, { preserveDrawingBuffer: true, stencil: true });
         this.inputMap = {};
-        this.mobileInput = { x: 0, z: 0 };
         this.movingObstacles = [];
         this.scene = this.createScene();
 
@@ -18,7 +17,8 @@ class DLICOMGame {
     createScene() {
         const scene = new BABYLON.Scene(this.engine);
         
-        // 1. HIGH-QUALITY ENVIRONMENT
+        // 1. HIGH-QUALITY ENVIRONMENT (HDR/Skybox)
+        // Using a pre-filtered .env file for realistic PBR reflections
         const hdrTexture = BABYLON.CubeTexture.CreateFromPrefilteredData(
             "https://assets.babylonjs.com/environments/environmentSpecular.env", 
             scene
@@ -43,18 +43,24 @@ class DLICOMGame {
         // 5. COMPLEX LEVEL GENERATION
         this.generateAdvancedLevel(scene);
 
-        // 6. PLAYER
+        // 6. PLAYER (The Spherical Drone)
         this.player = this.createPlayer(scene);
 
-        // 7. CAMERA SETUP (ZOOMED OUT TO RADIUS 25)
+        // 7. CAMERA SETUP (Cinematic Follow)
         this.cameraTarget = new BABYLON.TransformNode("camTarget", scene);
-        this.camera = new BABYLON.FollowCamera("FollowCam", new BABYLON.Vector3(0, 10, -25), scene);
-        this.camera.radius = 17; 
-        this.camera.heightOffset = 6;
+        this.camera = new BABYLON.FollowCamera("FollowCam", new BABYLON.Vector3(0, 10, -20), scene);
+        this.camera.radius = 10;
+        this.camera.heightOffset = 4;
         this.camera.rotationOffset = 180;
         this.camera.cameraAcceleration = 0.05;
         this.camera.maxCameraSpeed = 10;
         this.camera.lockedTarget = this.cameraTarget;
+
+        // // 8. CONTROLS
+        // scene.onKeyboardObservable.add((kbInfo) => {
+        //     this.inputMap[kbInfo.event.key.toLowerCase()] = (kbInfo.type === BABYLON.KeyboardEventTypes.KEYDOWN);
+        //     if (kbInfo.event.code === "Space") this.inputMap["space"] = (kbInfo.type === BABYLON.KeyboardEventTypes.KEYDOWN);
+        // });
 
         // 8. CONTROLS
         scene.onKeyboardObservable.add((kbInfo) => {
@@ -62,10 +68,13 @@ class DLICOMGame {
             if (kbInfo.event.code === "Space") key = "space";
 
             if (kbInfo.type === BABYLON.KeyboardEventTypes.KEYDOWN) {
-                if (key === "space" && kbInfo.event.repeat) return; 
+                // স্পেসবার চেপে ধরে রাখলে যেন বারবার লাফ না দেয়
+                if (key === "space" && kbInfo.event.repeat) {
+                    return; 
+                }
                 this.inputMap[key] = true;
             } else if (kbInfo.type === BABYLON.KeyboardEventTypes.KEYUP) {
-                if (key !== "space") this.inputMap[key] = false;
+                this.inputMap[key] = false;
             }
         });
 
@@ -75,6 +84,7 @@ class DLICOMGame {
             this.updateMovement();
             this.animateObstacles();
             
+            // Death/Fall Check
             if (this.player.position.y < -15) {
                 this.resetPlayer();
             }
@@ -85,29 +95,35 @@ class DLICOMGame {
 
     createPBRMaterials(scene) {
         const mats = {};
+
+        // Floor: Carbon Fiber / Metallic Dark
         mats.floor = new BABYLON.PBRMaterial("floorMat", scene);
         mats.floor.metallic = 0.8;
         mats.floor.roughness = 0.2;
         mats.floor.albedoColor = new BABYLON.Color3(0.02, 0.05, 0.1);
-        mats.floor.emissiveColor = new BABYLON.Color3(0, 0.1, 0.2);
+        mats.floor.emissiveColor = new BABYLON.Color3(0, 0.1, 0.2); // Subtle glow
 
+        // Hazards: Glowing Neon Red
         mats.hazard = new BABYLON.PBRMaterial("hazardMat", scene);
         mats.hazard.metallic = 0.5;
         mats.hazard.roughness = 0.1;
         mats.hazard.albedoColor = new BABYLON.Color3(1, 0, 0);
         mats.hazard.emissiveColor = new BABYLON.Color3(0.8, 0, 0);
 
+        // Ramps: Gold/Industrial
         mats.ramp = new BABYLON.PBRMaterial("rampMat", scene);
         mats.ramp.metallic = 1.0;
         mats.ramp.roughness = 0.3;
         mats.ramp.albedoColor = new BABYLON.Color3(0.8, 0.6, 0.1);
 
+        // Moving Walls: Cyan Glass
         mats.moving = new BABYLON.PBRMaterial("movingMat", scene);
         mats.moving.metallic = 0.1;
         mats.moving.roughness = 0.1;
         mats.moving.alpha = 0.8;
         mats.moving.albedoColor = new BABYLON.Color3(0, 0.8, 1);
         mats.moving.emissiveColor = new BABYLON.Color3(0, 0.4, 0.5);
+
         return mats;
     }
 
@@ -130,29 +146,38 @@ class DLICOMGame {
     }
 
     generateAdvancedLevel(scene) {
+        // --- Starting Platform ---
         this.createBox(scene, 12, 1, 15, 0, -0.5, 0, this.materials.floor);
+
+        // --- The High Jump Ramp ---
         const ramp = this.createBox(scene, 8, 1, 10, 0, 1.5, 15, this.materials.ramp);
-        ramp.rotation.x = -Math.PI / 8;
+        ramp.rotation.x = -Math.PI / 8; // Slight incline
         ramp.physicsImpostor = new BABYLON.PhysicsImpostor(ramp, BABYLON.PhysicsImpostor.BoxImpostor, { mass: 0 }, scene);
 
+        // --- Moving Obstacles Sector ---
         this.createBox(scene, 15, 1, 30, 0, -0.5, 40, this.materials.floor);
+        
         const wall1 = this.createBox(scene, 6, 4, 1, -4, 2, 35, this.materials.moving);
         this.movingObstacles.push({ mesh: wall1, axis: 'x', range: 5, speed: 0.05, start: -4 });
+
         const wall2 = this.createBox(scene, 6, 4, 1, 4, 2, 45, this.materials.moving);
         this.movingObstacles.push({ mesh: wall2, axis: 'x', range: 5, speed: 0.05, start: 4 });
 
+        // --- Narrow Cylindrical Bridge ---
         const bridge = BABYLON.MeshBuilder.CreateCylinder("bridge", { height: 20, diameter: 2 }, scene);
         bridge.position.set(0, -0.5, 65);
         bridge.rotation.x = Math.PI / 2;
         bridge.material = this.materials.ramp;
         bridge.physicsImpostor = new BABYLON.PhysicsImpostor(bridge, BABYLON.PhysicsImpostor.CylinderImpostor, { mass: 0 }, scene);
 
+        // --- Hazard Zig-Zag ---
         this.createBox(scene, 20, 1, 40, 0, -0.5, 95, this.materials.floor);
         for(let z = 80; z < 115; z += 5) {
             const xPos = Math.sin(z * 0.5) * 6;
             this.createBox(scene, 4, 2, 2, xPos, 1, z, this.materials.hazard);
         }
 
+        // --- Finishing Goal Area ---
         const goal = this.createBox(scene, 15, 1, 15, 0, -0.5, 130, this.materials.floor);
         const beacon = BABYLON.MeshBuilder.CreateCylinder("goal", { height: 10, diameter: 12 }, scene);
         beacon.position.set(0, 5, 130);
@@ -186,31 +211,18 @@ class DLICOMGame {
         if (this.inputMap["a"] || this.inputMap["arrowleft"]) force.x = -speed;
         if (this.inputMap["d"] || this.inputMap["arrowright"]) force.x = speed;
 
-        if (this.mobileInput.x !== 0 || this.mobileInput.z !== 0) {
-            force.x = this.mobileInput.x * speed;
-            force.z = this.mobileInput.z * speed;
-        }
-
         if (force.length() > 0) {
             this.player.physicsImpostor.applyImpulse(force, this.player.getAbsolutePosition());
         }
 
-        // FIXED JUMP LOGIC: PREVENT FLYING/INFINITE JUMP
+        // Jump logic
         if (this.inputMap["space"]) {
-            const linearVel = this.player.physicsImpostor.getLinearVelocity();
-            
-            // 1. Strict Velocity Check (Is the ball moving up or down?)
-            if (Math.abs(linearVel.y) < 0.1) {
-                // 2. Physical Surface Check (Is there something below the ball?)
-                const ray = new BABYLON.Ray(this.player.position, new BABYLON.Vector3(0, -1, 0), 1.1);
-                const hit = this.scene.pickWithRay(ray);
-                
-                if (hit.pickedMesh) {
-                    this.player.physicsImpostor.applyImpulse(new BABYLON.Vector3(0, 11, 0), this.player.getAbsolutePosition());
-                }
+            const ray = new BABYLON.Ray(this.player.position, new BABYLON.Vector3(0, -1, 0), 1.2);
+            const hit = this.scene.pickWithRay(ray);
+            if (hit.pickedMesh) {
+                this.player.physicsImpostor.applyImpulse(new BABYLON.Vector3(0, 10, 0), this.player.getAbsolutePosition());
+                this.inputMap["space"] = false;
             }
-            // Reset input immediately to prevent jumping multiple times per single tap/press
-            this.inputMap["space"] = false;
         }
     }
 
